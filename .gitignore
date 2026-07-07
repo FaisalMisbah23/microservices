@@ -4,15 +4,18 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.next/
 
 # Build outputs
 dist/
 build/
 coverage/
+*.tsbuildinfo
 
 # Environment
 .env
 .env.*
+!.env.example
 
 # Logs
 *.log
@@ -27,16 +30,26 @@ Thumbs.db
 .vscode/
 .idea/
 *.sublime-workspace
-
-# Typescript
-*.tsbuildinfo
+*.swp
+*.swo
+*~
 
 # Docker
 docker-compose.override.yml
+.docker/
 
 # Kubernetes
 .kube/
+k8s/*.secret.yaml
+k8s/*-secrets.yaml
+
+# Skaffold
+.skaffold/
+skaffold.yaml.local
 
 # Misc
 /.cache
 /.parcel-cache
+.turbo/
+dist-ssr/
+*.local
