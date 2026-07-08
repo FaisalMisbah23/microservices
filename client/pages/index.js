@@ -1,4 +1,5 @@
 import React from 'react'
+import buildClient from '../api/build-client'
 
 export default function Landing({ currentUser }) {
     return (
@@ -13,9 +14,8 @@ export default function Landing({ currentUser }) {
     )
 }
 
-Landing.initialProps = async () => {
-    const response = await axios.get('/api/users/currentuser').catch(err => {
-        console.log(err);
-    });
-    return response.data
+Landing.getInitialProps = async (context) => {
+    const client = buildClient(context)
+    const { data } = await client.get('/api/users/currentuser');
+    return data;
 }
