@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "ts-node-dev --poll src/index.ts",
-    "test": "jest --watchAll=false --runInBand --no-cache"
+    "test": "jest --watchAll=false --runInBand --no-cache",
+    "test:watch": "jest --watch"
   },
   "jest": {
     "preset": "ts-jest",

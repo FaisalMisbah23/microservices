@@ -2,7 +2,7 @@ POST  ticketing.dev/api/Users/signup
 Content-Type: application/json
 
 {
-  "email": "testuser30@gmail.com",
+  "email": "testuser31@gmail.com",
   "password": "test"
 }
 
@@ -17,3 +17,31 @@ Content-Type: application/json
 
 ###
 GET  ticketing.dev/api/Users/currentuser
+
+###
+POST  ticketing.dev/api/Users/signout
+
+###
+GET ticketing.dev/api/tickets
+
+###
+POST ticketing.dev/api/tickets
+Content-Type: application/json
+
+{
+  "title": "new ticket",
+  "price": 100
+}
+
+###
+GET ticketing.dev/api/tickets/6a51aaf5bab10ee90dc918ca
+
+###
+PUT ticketing.dev/api/tickets/6a51aaf5bab10ee90dc918ca
+Content-Type: application/json
+
+{
+  "title": "updated ticket",
+  "price": 10
+}
+
