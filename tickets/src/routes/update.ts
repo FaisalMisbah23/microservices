@@ -2,6 +2,8 @@ import express, { Request, Response } from 'express'
 import { Ticket } from '../models/ticket';
 import { NotAuthorizedError, NotFoundError, RequireAuth, validateRequest } from '@fmticketflow/common';
 import { body } from 'express-validator';
+import { TicketUpdatedPublisher } from '../events/publishers/ticket-updated-publisher';
+import { natsWrapper } from '../nats-wrapper';
 
 const router = express.Router();
 
@@ -24,6 +26,12 @@ body('price').isFloat({ gt: 0 }).withMessage('Price must be provided and must be
     })
 
     await ticket.save();
+    new TicketUpdatedPublisher(natsWrapper.client).publish({
+        id: ticket.id,
+        title: ticket.title,
+        price: ticket.price,
+        userId: ticket.userId
+    })
 
     res.send(ticket)
 })
