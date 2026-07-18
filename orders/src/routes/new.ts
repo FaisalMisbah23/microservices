@@ -7,13 +7,15 @@ import { Order } from '../models/order';
 
 const router = express.Router();
 
-router.post('/api/orders', RequireAuth, [
+const EXPIRATION_WINDOW_SECONDS = 15 * 60;
+
+router.post('/api/orders', RequireAuth as any, [
     body('ticketId')
         .not()
         .isEmpty()
         .custom((input) => mongoose.Types.ObjectId.isValid(input)) // *coupling*
         .withMessage('TicketId must be provided')
-], validateRequest, async (req: Request, res: Response) => {
+], validateRequest as any, async (req: Request, res: Response) => {
 
     const { ticketId } = req.body;
 
@@ -24,29 +26,29 @@ router.post('/api/orders', RequireAuth, [
     }
 
     // make sure that this ticket is not already reserved
-    // run query to look at all orders. find an order where the ticket is the ticket we just found *and* the orders status is *not* cancelled. if we find an order from that means the ticket *is* reserved
-    const existingOrder = await Order.findOne({
-        ticket: ticket,
-        status: {
-            $in: [
-                OrderStatus.Created,
-                OrderStatus.AwaitingPayment,
-                OrderStatus.Complete
-            ]
-        }
-    })
+    const isReserved = await ticket.isReserved()
 
-    if (existingOrder) {
+    if (isReserved) {
         throw new BadRequestError('Ticket is already reserved')
     }
 
     // calculate an expiration date for this order 
+    const expiration = new Date();
+    expiration.setSeconds(expiration.getSeconds() + EXPIRATION_WINDOW_SECONDS)
 
     // build the order and save it to the database 
+    const order = Order.build({
+        userId: req.currentUser!.id,
+        status: OrderStatus.Created,
+        expiresAt: expiration,
+        ticket
+    })
+
+    await order.save()
 
     // publish an event saying that an order was created
 
-    res.send({})
+    res.status(201).send(order)
 })
 
 export { router as newOrderRouter }

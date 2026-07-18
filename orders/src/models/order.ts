@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import { TicketDoc } from "./ticket";
 import { OrderStatus } from "@fmticketflow/common";
 
+export { OrderStatus };
+
 interface OrderAttrs {
     userId: string
     status: OrderStatus

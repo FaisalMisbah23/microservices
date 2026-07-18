@@ -15,9 +15,9 @@ app.use(json());
 app.use(cookieSession({
   signed: false,
   secure: process.env.NODE_ENV !== 'test'
-}))
+}) as any)
 
-app.use(currentUser)
+app.use(currentUser as any)
 app.use(indexOrderRouter);
 app.use(newOrderRouter);
 app.use(deleteOrderRouter);
@@ -32,6 +32,6 @@ app.all('*', async () => {
 // })
 
 
-app.use(errorHandler)
+app.use(errorHandler as any)
 
 export { app };
