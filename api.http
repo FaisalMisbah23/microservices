@@ -37,11 +37,11 @@ Content-Type: application/json
 GET ticketing.dev/api/tickets/6a51aaf5bab10ee90dc918ca
 
 ###
-PUT ticketing.dev/api/tickets/6a5701e4442e9a95892d0207
+PUT ticketing.dev/api/tickets/6a5c7192b2a869cb2167123a
 Content-Type: application/json
 
 {
   "title": "updated ticket",
-  "price": 20
+  "price": 10
 }
 

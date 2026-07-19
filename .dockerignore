@@ -1,0 +1,12 @@
+**/node_modules
+**/.git
+**/.skaffold
+**/coverage
+**/*.tgz
+**/npm-debug.log*
+client
+nats-test
+infra
+.gitignore
+sync-common.sh
+README.md

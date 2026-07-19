@@ -1,9 +1,19 @@
 import express, { Request, Response } from 'express'
+import { Order } from '../models/order';
+import { NotAuthorizedError, NotFoundError, RequireAuth } from '@fmticketflow/common';
 
 const router = express.Router();
 
-router.get('/api/orders/:orderid', async (req: Request, res: Response) => {
-    res.send({})
+router.get('/api/orders/:orderId', RequireAuth as any, async (req: Request, res: Response) => {
+    const order = await Order.findById(req.params.orderId).populate('ticket')
+    if (!order) {
+        throw new NotFoundError();
+    }
+
+    if (order.userId != req.currentUser!.id) {
+        throw new NotAuthorizedError();
+    }
+    res.send(order)
 })
 
 export { router as showOrderRouter }

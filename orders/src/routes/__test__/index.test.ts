@@ -1,10 +1,12 @@
-import { it } from '@jest/globals'
+import { expect, it } from '@jest/globals'
 import request from 'supertest';
 import { app } from '../../app';
 import { Ticket } from '../../models/ticket';
+import mongoose from 'mongoose';
 
 const buildTicket = async () => {
     const ticket = Ticket.build({
+        id: new mongoose.Types.ObjectId().toHexString(),
         title: 'first match',
         price: 50
     })
@@ -49,7 +51,7 @@ it('fetches orders for an particular user', async () => {
         .set('Cookie', userTwo)
         .expect(200)
 
-    // make sure we only got teh orders for user #2
+    // make sure we only got the orders for user #2
     expect(response.body.length).toEqual(2);
     expect(response.body[0].id).toEqual(orderOne.id);
     expect(response.body[1].id).toEqual(orderTwo.id)

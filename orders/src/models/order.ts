@@ -12,10 +12,12 @@ interface OrderAttrs {
 }
 
 interface OrderDoc extends mongoose.Document {
+    id: string
     userId: string
     status: OrderStatus
     expiresAt: Date
     ticket: TicketDoc
+    version: number
 }
 
 interface OrderModel extends mongoose.Model<OrderDoc> {
@@ -44,7 +46,9 @@ const orderSchema = new mongoose.Schema({
             ret.id = ret._id;
             delete ret._id
         }
-    }
+    },
+    versionKey: 'version',
+    optimisticConcurrency: true
 })
 
 orderSchema.statics.build = (attrs: OrderAttrs) => {
