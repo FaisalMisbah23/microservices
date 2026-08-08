@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: expiration
-        image: docker.io/faisalmisbah23/expiration
+        image: faisalmisbah23/expiration
         env:
         - name: NATS_CLIENT_ID
           valueFrom:

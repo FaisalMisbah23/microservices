@@ -45,3 +45,11 @@ Content-Type: application/json
   "price": 10
 }
 
+###
+POST ticketing.dev/api/orders
+Content-Type: application/json
+
+{
+  "ticketId": "6a76853f3dc595ecd50e687d"
+}
+

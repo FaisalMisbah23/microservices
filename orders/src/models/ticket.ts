@@ -5,6 +5,7 @@ interface TicketAttrs {
     id: string
     title: string
     price: number
+    version?: number
 }
 
 export interface TicketDoc extends mongoose.Document {
@@ -17,6 +18,7 @@ export interface TicketDoc extends mongoose.Document {
 
 interface TicketModel extends mongoose.Model<TicketDoc> {
     build(attrs: TicketAttrs): TicketDoc
+    upsert(attrs: TicketAttrs): Promise<TicketDoc | null>
     findByEvent(event: { id: string, version: number }): Promise<TicketDoc | null>;
 }
 
@@ -58,8 +60,17 @@ ticketSchema.statics.build = (attrs: TicketAttrs) => {
     return new Ticket({
         _id: attrs.id,
         title: attrs.title,
-        price: attrs.price
+        price: attrs.price,
+        version: attrs.version ?? 0
     })
+}
+
+ticketSchema.statics.upsert = (attrs: TicketAttrs) => {
+    return Ticket.findOneAndUpdate(
+        { _id: attrs.id },
+        { title: attrs.title, price: attrs.price, version: attrs.version ?? 0 },
+        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+    )
 }
 
 ticketSchema.methods.isReserved = async function () {

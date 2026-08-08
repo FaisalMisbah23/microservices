@@ -8,14 +8,13 @@ build:
     push: false
   artifacts:
   - image: faisalmisbah23/auth
-    context: .
+    context: auth
     docker:
-      dockerfile: auth/Dockerfile
+      dockerfile: Dockerfile
     sync:
       manual:
-      - src: 'auth/src/**/*.ts'
+      - src: 'src/**/*.ts'
         dest: .
-        strip: 'auth'
   - image: faisalmisbah23/client
     context: client
     docker:
@@ -25,29 +24,34 @@ build:
       - dest: .
         src: '**/*.js'
   - image: faisalmisbah23/tickets
-    context: .
+    context: tickets
     docker:
-      dockerfile: tickets/Dockerfile
+      dockerfile: Dockerfile
     sync:
       manual:
-      - src: 'tickets/src/**/*.ts'
+      - src: 'src/**/*.ts'
         dest: .
-        strip: 'tickets'
   - image: faisalmisbah23/orders
-    context: .
+    context: orders
     docker:
-      dockerfile: orders/Dockerfile
+      dockerfile: Dockerfile
     sync:
       manual:
-      - src: 'orders/src/**/*.ts'
+      - src: 'src/**/*.ts'
         dest: .
-        strip: 'orders'
   - image: faisalmisbah23/expiration
-    context: .
+    context: expiration
     docker:
-      dockerfile: expiration/Dockerfile
+      dockerfile: Dockerfile
     sync:
       manual:
-      - src: 'expiration/src/**/*.ts'
+      - src: 'src/**/*.ts'
         dest: .
-        strip: 'expiration'
+  - image: faisalmisbah23/payments
+    context: payments
+    docker:
+      dockerfile: Dockerfile
+    sync:
+      manual:
+      - src: 'src/**/*.ts'
+        dest: .

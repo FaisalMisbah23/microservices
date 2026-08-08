@@ -19,6 +19,10 @@ export class OrderCreatedListener extends Listener<OrderCreatedEvent> {
 
         // mark the ticket as begin reserved by setting its orderId property
         ticket.set({ orderId: data.id })
+
+        // save the ticket (increments version)
+        await ticket.save()
+
         await new TicketUpdatedPublisher(this.client).publish({
             id: ticket.id,
             title: ticket.title,
@@ -27,9 +31,6 @@ export class OrderCreatedListener extends Listener<OrderCreatedEvent> {
             version: ticket.version,
             orderId: ticket.orderId
         })
-
-        // save the ticket 
-        await ticket.save()
 
         // ack the message
         msg.ack()
