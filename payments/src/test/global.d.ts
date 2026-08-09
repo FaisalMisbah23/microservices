@@ -1,6 +1,6 @@
-export {};
+export { };
 
 declare global {
-  var signin: () => string[];
+  var signin: (id?: string) => string[];
 }
 

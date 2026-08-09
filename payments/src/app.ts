@@ -3,6 +3,7 @@ import { json } from 'body-parser';
 import 'express-async-errors'
 import { NotFoundError, currentUser, errorHandler } from '@fmticketflow/common';
 import cookieSession from 'cookie-session';
+import { createChargeRouter } from './routes/new';
 
 const app = express();
 
@@ -14,6 +15,8 @@ app.use(cookieSession({
 }) as any)
 
 app.use(currentUser as any)
+
+app.use(createChargeRouter)
 
 app.all('*', async () => {
   throw new NotFoundError();

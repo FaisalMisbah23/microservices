@@ -16,19 +16,20 @@ export class ExpirationCompleteListener extends Listener<ExpirationCompleteEvent
             throw new Error('Order not found')
         }
 
-        // Only cancel the order if it hasn't been paid for or already cancelled
-        if (order.status === OrderStatus.Created || order.status === OrderStatus.AwaitingPayment) {
-            order.set({ status: OrderStatus.Cancelled })
-            await order.save()
-
-            await new OrderCancelledPublisher(natsWrapper.client).publish({
-                id: order.id,
-                version: order.version,
-                ticket: {
-                    id: order.ticket.id
-                }
-            })
+        if (order.status === OrderStatus.Complete) {
+            return msg.ack()
         }
+
+        order.set({ status: OrderStatus.Cancelled })
+        await order.save()
+
+        await new OrderCancelledPublisher(natsWrapper.client).publish({
+            id: order.id,
+            version: order.version,
+            ticket: {
+                id: order.ticket.id
+            }
+        })
 
         msg.ack()
     }

@@ -50,6 +50,15 @@ POST ticketing.dev/api/orders
 Content-Type: application/json
 
 {
-  "ticketId": "6a76853f3dc595ecd50e687d"
+  "ticketId": "6a76fee934215dd6c08cdd40"
+}
+
+###
+POST ticketing.dev/api/payments
+Content-Type: application/json
+
+{
+  "token": "tok_visa",
+  "orderId": "6a76fef7a95b5dbbebd0f3dc"
 }
 
