@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "next dev --hostname 0.0.0.0 --webpack"
+    "dev": "next dev --hostname 0.0.0.0 --webpack",
+    "vercel-build": "next build --webpack"
   },
   "keywords": [],
   "author": "",
