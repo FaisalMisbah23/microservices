@@ -1,0 +1,45 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-oci
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - api.161.118.209.104.nip.io
+    secretName: api-tls
+  rules:
+  - host: api.161.118.209.104.nip.io
+    http:
+      paths:
+      - path: /api/payments/?(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: payments-srv
+            port:
+              number: 3000
+      - path: /api/users/?(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: auth-srv
+            port:
+              number: 3000
+      - path: /api/tickets/?(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: tickets-srv
+            port:
+              number: 3000
+      - path: /api/orders/?(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: orders-srv
+            port:
+              number: 3000
