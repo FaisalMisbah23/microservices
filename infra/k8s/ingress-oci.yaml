@@ -9,10 +9,10 @@ spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - api.161.118.209.104.nip.io
+    - api.buzzapp.dev
     secretName: api-tls
   rules:
-  - host: api.161.118.209.104.nip.io
+  - host: api.buzzapp.dev
     http:
       paths:
       - path: /api/payments/?(.*)
