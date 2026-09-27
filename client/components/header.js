@@ -17,7 +17,7 @@ export default function Header({ currentUser }) {
         }
         )
     return (
-        <nav className="navbar navbar-light bg-light">
+        <nav className="navbar navbar-expand bg-light">
             <Link href="/" className='navbar-brand'>
                 Ticketing
             </Link>

@@ -33,13 +33,13 @@ const NewTicket = () => {
         <div>
             <h1>Create a New Ticket</h1>
             <form onSubmit={onSubmit}>
-                <div className='form-group'>
-                    <label>Title</label>
-                    <input value={title} onChange={(e) => setTitle(e.target.value)} className='form-control' />
+                <div className='mb-3'>
+                    <label htmlFor='title'>Title</label>
+                    <input id="title" value={title} onChange={(e) => setTitle(e.target.value)} className='form-control' />
                 </div>
-                <div className='form-group'>
-                    <label>Price</label>
-                    <input value={price} onBlur={onBlur} onChange={(e) => setPrice(e.target.value)} className='form-control' />
+                <div className='mb-3'>
+                    <label htmlFor='price'>Price</label>
+                    <input id="price" value={price} onBlur={onBlur} onChange={(e) => setPrice(e.target.value)} className='form-control' />
                 </div>
                 {errors}
                 <button className='btn btn-primary' disabled={isLoading} aria-busy={isLoading}>
