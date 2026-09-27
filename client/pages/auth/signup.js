@@ -6,7 +6,7 @@ import router from 'next/router';
 export default function Signup() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const { doRequest, errors } = useRequest({
+    const { doRequest, errors, isLoading } = useRequest({
         url: '/api/users/signup',
         method: 'post',
         body: { email, password },
@@ -31,7 +31,9 @@ export default function Signup() {
                 <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="form-control" />
             </div>
             {errors}
-            <button className="btn btn-primary">Sign Up</button>
+            <button className="btn btn-primary" disabled={isLoading} aria-busy={isLoading}>
+                {isLoading ? 'Creating account...' : 'Sign Up'}
+            </button>
         </form>
     )
 }

@@ -6,7 +6,7 @@ const NewTicket = () => {
     const [title, setTitle] = React.useState('');
     const [price, setPrice] = React.useState('');
 
-    const { doRequest, errors } = useRequest({
+    const { doRequest, errors, isLoading } = useRequest({
         url: '/api/tickets',
         method: 'post',
         body: {
@@ -42,7 +42,9 @@ const NewTicket = () => {
                     <input value={price} onBlur={onBlur} onChange={(e) => setPrice(e.target.value)} className='form-control' />
                 </div>
                 {errors}
-                <button className='btn btn-primary'>Submit</button>
+                <button className='btn btn-primary' disabled={isLoading} aria-busy={isLoading}>
+                    {isLoading ? 'Creating...' : 'Submit'}
+                </button>
             </form>
         </div >
     )
