@@ -2,7 +2,7 @@ import React from 'react'
 import useRequest from '../../hooks/use-request'
 import Router from 'next/router'
 
-const TicketShow = ({ ticket }) => {
+const TicketShow = ({ ticket, loadError }) => {
     const { doRequest, errors, isLoading } = useRequest({
         url: '/api/orders',
         method: 'post',
@@ -11,6 +11,15 @@ const TicketShow = ({ ticket }) => {
         },
         onSuccess: (order) => Router.push('/orders/[orderId]', `/orders/${order.id}`)
     })
+
+    if (loadError || !ticket) {
+        return (
+            <div>
+                <h1>Ticket unavailable</h1>
+                <p className='text-muted'>{loadError || 'That ticket does not exist.'}</p>
+            </div>
+        )
+    }
 
     // The API returns orderId on a held ticket. Without this the page looks
     // identical for a free seat and one someone else is holding, and the buyer
@@ -44,9 +53,18 @@ const TicketShow = ({ ticket }) => {
 
 TicketShow.getInitialProps = async (context, client, currentUser) => {
     const { ticketId } = context.query;
-    const { data } = await client.get(`/api/tickets/${ticketId}`);
 
-    return { ticket: data };
+    // Previously unguarded: any backend error rejected out of getInitialProps
+    // and Next rendered a 500 for the whole page.
+    try {
+        const { data } = await client.get(`/api/tickets/${ticketId}`);
+        return { ticket: data };
+    } catch (err) {
+        if (err.response?.status === 404) {
+            return { loadError: 'That ticket does not exist.' };
+        }
+        return { loadError: 'We could not load this ticket. Please try again.' };
+    }
 }
 
 export default TicketShow

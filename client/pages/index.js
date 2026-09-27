@@ -29,7 +29,12 @@ export default function Landing({ currentUser, tickets }) {
 }
 
 Landing.getInitialProps = async (context, client, currentUser) => {
-    const { data } = await client.get('/api/tickets');
-
-    return { tickets: data };
+    // Previously unguarded: a backend error rejected out of getInitialProps and
+    // Next rendered a 500 for the whole page.
+    try {
+        const { data } = await client.get('/api/tickets');
+        return { tickets: Array.isArray(data) ? data : [] };
+    } catch (err) {
+        return { tickets: [] };
+    }
 }
