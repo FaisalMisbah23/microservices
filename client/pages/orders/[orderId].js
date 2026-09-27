@@ -13,7 +13,9 @@ const OrderShow = ({ order, currentUser, loadError }) => {
         url: '/api/payments',
         method: 'post',
         body: {
-            orderId: order.id
+            // order is undefined when getInitialProps returned a loadError, and
+            // this hook runs before the guard below, so it must be optional.
+            orderId: order?.id
         },
         onSuccess: (payment) => Router.push('/orders')
     });
