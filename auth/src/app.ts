@@ -15,7 +15,10 @@ app.set('trust proxy',true);
 app.use(json());
 app.use(cookieSession({
   signed:false,
-  secure:process.env.NODE_ENV !== 'test'
+  // Was NODE_ENV !== 'test', which silently disables the session cookie over
+  // plain HTTP: signup returns 201 with no Set-Cookie and every later write
+  // 401s. Opt out explicitly with COOKIE_SECURE=false for a local boot.
+  secure: process.env.COOKIE_SECURE !== 'false'
 }))
 
 app.use(currentUserRouter);
