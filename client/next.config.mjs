@@ -10,5 +10,14 @@ export default {
         };
         return config;
     },
-    allowedDevOrigins: ['ticketing.dev']
+    allowedDevOrigins: ['ticketing.dev'],
+
+    // Local dev only: the client calls relative /api/* paths, which only resolve
+    // in production because vercel.json rewrites them to api.buzzapp.dev. Locally
+    // they must be rewritten to the dev proxy. Override with QA_API_TARGET.
+    async rewrites() {
+        const target = process.env.QA_API_TARGET;
+        if (!target) return [];
+        return [{ source: '/api/:path*', destination: `${target}/api/:path*` }];
+    }
 }
