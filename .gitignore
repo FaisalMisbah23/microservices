@@ -47,6 +47,11 @@ k8s/*-secrets.yaml
 .skaffold/
 skaffold.yaml.local
 
+# Agent tooling
+.kilo/
+.kilocode/
+.gstack/
+
 # Misc
 /.cache
 /.parcel-cache

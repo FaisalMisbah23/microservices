@@ -3,6 +3,7 @@ import { json } from 'body-parser';
 import 'express-async-errors'
 import { NotFoundError, currentUser, errorHandler } from '@fmticketflow/common';
 import cookieSession from 'cookie-session';
+import { healthRouter } from './routes/health';
 import { createTicketRouter } from './routes/new';
 import { showTicketRouter } from './routes/show';
 import { indexTicketRouter } from './routes';
@@ -25,6 +26,8 @@ app.use(createTicketRouter);
 app.use(showTicketRouter);
 app.use(indexTicketRouter);
 app.use(updateTicketRouter);
+
+app.use(healthRouter);
 
 app.all('*', async () => {
   throw new NotFoundError();

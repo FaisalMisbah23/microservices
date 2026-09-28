@@ -12,7 +12,10 @@ class NatsWrapper {
     }
 
     connect(clusterId: string, clientId: string, url: string) {
-        this._client = nats.connect(clusterId, clientId, { url })
+        this._client = nats.connect(clusterId, clientId, {
+            url,
+            ...(process.env.NATS_TOKEN ? { token: process.env.NATS_TOKEN } : {})
+        })
 
         return new Promise<void>((resolve, reject) => {
             this._client?.on('connect', () => {

@@ -1,3 +1,4 @@
+import { createServer } from 'http'
 import { OrderCreatedListener } from './events/listeners/order-created-listener'
 import { natsWrapper } from './nats-wrapper'
 
@@ -32,6 +33,23 @@ const start = async () => {
   } catch (error) {
     console.error(error)
   }
+
+  // This is a worker with no API surface, but PaaS hosts expect every process to
+  // bind $PORT and to answer a health path. Without this the platform marks the
+  // deployment unhealthy because nothing is listening.
+  const server = createServer((req, res) => {
+    if (req.url === '/health' || req.url === '/') {
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ status: 'ok' }))
+      return
+    }
+    res.writeHead(404, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ error: 'not found' }))
+  })
+
+  server.listen(process.env.PORT || 3000, () => {
+    console.log('Health server listening on port ' + (process.env.PORT || 3000))
+  })
 
 }
 

@@ -10,7 +10,11 @@ interface Payload
 
 const expirationQueue = new Queue<Payload>('order-expiration', {
     redis: {
-        host: process.env.REDIS_HOST
+        host: process.env.REDIS_HOST,
+        port: Number(process.env.REDIS_PORT || 6379),
+        // Required whenever the server runs with requirepassword, otherwise
+        // Bull's connection is rejected with NOAUTH and jobs never process.
+        ...(process.env.REDIS_PASSWORD ? { password: process.env.REDIS_PASSWORD } : {})
     }
 })
 
