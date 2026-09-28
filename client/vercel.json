@@ -1,5 +1,8 @@
 {
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://api.buzzapp.dev/api/:path*" }
+    {
+      "source": "/api/:path*",
+      "destination": "https://129-150-41-255.sslip.io/api/:path*"
+    }
   ]
 }
