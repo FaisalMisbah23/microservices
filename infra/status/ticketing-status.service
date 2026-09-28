@@ -1,0 +1,21 @@
+[Unit]
+Description=Ticketing status dashboard
+After=network.target nginx.service
+
+[Service]
+Type=simple
+User=nats
+Group=nats
+WorkingDirectory=/opt/ticketing/status
+Environment=STATUS_PORT=3001
+Environment=CHECK_INTERVAL=30
+Environment=STATUS_OUT=/var/lib/ticketing-status/current.json
+Environment=STATUS_HISTORY=/var/lib/ticketing-status/history.jsonl
+ExecStart=/usr/bin/python3 /opt/ticketing/status/status.py
+Restart=always
+RestartSec=5
+MemoryMax=48M
+MemoryHigh=40M
+
+[Install]
+WantedBy=multi-user.target

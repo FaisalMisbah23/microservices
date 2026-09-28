@@ -14,6 +14,14 @@ services:
     healthCheckPath: /health
     autoDeployTrigger: commit
     envVars:
+      - key: NEW_RELIC_LICENSE_KEY
+        sync: false
+      - key: NEW_RELIC_APP_NAME
+        value: ticketing-auth
+      - key: NEW_RELIC_LOG
+        value: stdout
+      - key: NEW_RELIC_LOG_LEVEL
+        value: info
       - key: NODE_ENV
         value: production
       - key: COOKIE_SECURE
@@ -35,6 +43,14 @@ services:
     healthCheckPath: /health
     autoDeployTrigger: commit
     envVars:
+      - key: NEW_RELIC_LICENSE_KEY
+        sync: false
+      - key: NEW_RELIC_APP_NAME
+        value: ticketing-orders
+      - key: NEW_RELIC_LOG
+        value: stdout
+      - key: NEW_RELIC_LOG_LEVEL
+        value: info
       - key: NODE_ENV
         value: production
       - key: JWT_KEY
@@ -62,6 +78,14 @@ services:
     healthCheckPath: /health
     autoDeployTrigger: commit
     envVars:
+      - key: NEW_RELIC_LICENSE_KEY
+        sync: false
+      - key: NEW_RELIC_APP_NAME
+        value: ticketing-tickets
+      - key: NEW_RELIC_LOG
+        value: stdout
+      - key: NEW_RELIC_LOG_LEVEL
+        value: info
       - key: NODE_ENV
         value: production
       - key: JWT_KEY
@@ -89,6 +113,14 @@ services:
     healthCheckPath: /health
     autoDeployTrigger: commit
     envVars:
+      - key: NEW_RELIC_LICENSE_KEY
+        sync: false
+      - key: NEW_RELIC_APP_NAME
+        value: ticketing-payments
+      - key: NEW_RELIC_LOG
+        value: stdout
+      - key: NEW_RELIC_LOG_LEVEL
+        value: info
       - key: NODE_ENV
         value: production
       - key: JWT_KEY

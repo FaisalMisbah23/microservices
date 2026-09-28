@@ -10,7 +10,8 @@
         "test:ci": "jest",
         "build": "tsc -p tsconfig.build.json",
         "start:prod": "node build/index.js",
-        "build:dev": "tsc"
+        "build:dev": "tsc",
+        "start:instrumented": "NODE_OPTIONS=\"--require newrelic\" node build/index.js"
     },
     "jest": {
         "preset": "ts-jest",
@@ -35,7 +36,8 @@
         "mongoose": "^9.7.3",
         "mongoose-update-if-current": "^1.4.0",
         "node-nats-streaming": "^0.3.2",
-        "stripe": "^22.4.0"
+        "stripe": "^22.4.0",
+        "newrelic": "^14.5.1"
     },
     "devDependencies": {
         "@types/jest": "^30.0.0",
