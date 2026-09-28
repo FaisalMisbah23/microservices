@@ -46,7 +46,12 @@ const start = async () => {
     new OrderCreatedListener(natsWrapper.client).listen();
     new OrderCancelledListener(natsWrapper.client).listen()
 
-    await mongoose.connect(process.env.MONGO_URI)
+    await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 45000,
+      maxPoolSize: 5,
+      heartbeatFrequencyMS: 10000
+    })
     console.log('Connected to tickets MongoDb')
   } catch (error) {
     console.error(error)

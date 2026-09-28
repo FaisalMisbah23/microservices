@@ -46,7 +46,12 @@ const start = async () => {
     new ExpirationCompleteListener(natsWrapper.client).listen()
     new PaymentCreatedListener(natsWrapper.client).listen()
 
-    await mongoose.connect(process.env.MONGO_URI)
+    await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 45000,
+      maxPoolSize: 5,
+      heartbeatFrequencyMS: 10000
+    })
     console.log('Connected to orders MongoDb')
   } catch (error) {
     console.error(error)
