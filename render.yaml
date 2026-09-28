@@ -1,0 +1,107 @@
+# Render blueprint: the five ticketing microservices.
+# NATS Streaming and Redis stay on the OCI VM, not defined here.
+services:
+  - type: web
+    name: ticketing-auth
+    runtime: node
+    plan: free
+    region: singapore
+    repo: https://github.com/FaisalMisbah23/microservices
+    branch: main
+    rootDir: auth
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: COOKIE_SECURE
+        value: "false"
+      - key: JWT_KEY
+        sync: false
+      - key: MONGO_URI
+        sync: false
+  - type: web
+    name: ticketing-orders
+    runtime: node
+    plan: free
+    region: singapore
+    repo: https://github.com/FaisalMisbah23/microservices
+    branch: main
+    rootDir: orders
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_KEY
+        sync: false
+      - key: MONGO_URI
+        sync: false
+      - key: NATS_URL
+        sync: false
+      - key: NATS_CLUSTER_ID
+        sync: false
+      - key: NATS_CLIENT_ID
+        sync: false
+      - key: NATS_TOKEN
+        sync: false
+  - type: web
+    name: ticketing-tickets
+    runtime: node
+    plan: free
+    region: singapore
+    repo: https://github.com/FaisalMisbah23/microservices
+    branch: main
+    rootDir: tickets
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_KEY
+        sync: false
+      - key: MONGO_URI
+        sync: false
+      - key: NATS_URL
+        sync: false
+      - key: NATS_CLUSTER_ID
+        sync: false
+      - key: NATS_CLIENT_ID
+        sync: false
+      - key: NATS_TOKEN
+        sync: false
+  - type: web
+    name: ticketing-payments
+    runtime: node
+    plan: free
+    region: singapore
+    repo: https://github.com/FaisalMisbah23/microservices
+    branch: main
+    rootDir: payments
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_KEY
+        sync: false
+      - key: MONGO_URI
+        sync: false
+      - key: NATS_URL
+        sync: false
+      - key: NATS_CLUSTER_ID
+        sync: false
+      - key: NATS_CLIENT_ID
+        sync: false
+      - key: NATS_TOKEN
+        sync: false
+      - key: STRIPE_KEY
+        sync: false
