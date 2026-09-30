@@ -35,6 +35,17 @@ NR_KEY = os.environ.get("NEW_RELIC_API_KEY", "")
 NR_ACCOUNT = os.environ.get("NEW_RELIC_ACCOUNT_ID", "8561052")
 NR_ENDPOINT = os.environ.get("NEW_RELIC_ENDPOINT", "https://api.newrelic.com/graphql")
 NR_SECRET_FILE = "/opt/ticketing/newrelic.secret"
+# NRQL over a 1h window barely moves in 30s, and re-running it every pass would
+# burn NerdGraph rate limit for numbers that look identical. The health probes
+# keep their own cadence; the APM figures refresh on this one.
+NR_INTERVAL = int(os.environ.get("NR_INTERVAL", "300"))
+NR_WINDOW = os.environ.get("NR_WINDOW", "1 HOUR AGO")
+NR_TOP = int(os.environ.get("NR_TOP", "8"))
+# Below this many samples a "p95" is just one cold start, and it will outrank a
+# route serving hundreds of requests. An endpoint needs repeat traffic before its
+# tail latency means anything.
+NR_MIN_CALLS = int(os.environ.get("NR_MIN_CALLS", "5"))
+_nr_cache = {}
 
 NR_QUERY = """{
   actor {
@@ -51,6 +62,74 @@ NR_QUERY = """{
     }
   }
 }"""
+
+# percentile() comes back as {"95": v} rather than a bare number.
+NR_APP_NRQL = """SELECT count(*) AS calls, average(duration) AS avg_d,
+  percentile(duration, 95) AS p95, max(duration) AS max_d,
+  percentage(count(*), WHERE error IS true) AS err_pct
+FROM Transaction WHERE appName LIKE 'ticketing-%' SINCE {w} FACET appName"""
+
+NR_ENDPOINT_NRQL = """SELECT count(*) AS calls, average(duration) AS avg_d,
+  percentile(duration, 95) AS p95, max(duration) AS max_d
+FROM Transaction WHERE appName LIKE 'ticketing-%' SINCE {w}
+FACET appName, name LIMIT 60"""
+
+
+def _nr_key():
+    if NR_KEY:
+        return NR_KEY
+    try:
+        with open(NR_SECRET_FILE) as f:
+            return f.read().strip()
+    except Exception:
+        return ""
+
+
+def _post_nrd(graphql):
+    req = urllib.request.Request(
+        NR_ENDPOINT, data=json.dumps({"query": graphql}).encode(),
+        headers={"Content-Type": "application/json", "API-Key": _nr_key()})
+    with urllib.request.urlopen(req, timeout=TIMEOUT,
+                                context=ssl.create_default_context()) as r:
+        return json.loads(r.read())
+
+
+def _nrql(sql, cache_key):
+    """Run an NRQL query, reusing the last result until NR_INTERVAL passes.
+
+    Returns (results, error_string). On a cached hit the error is None, which is
+    how a transient failure stops being re-tried every 30 seconds.
+    """
+    hit = _nr_cache.get(cache_key)
+    if hit and (time.time() - hit[0]) < NR_INTERVAL:
+        return hit[1], None
+    try:
+        d = _post_nrd("""{ actor { account(id: %s) { nrql(query: %s) { results } } } }"""
+                      % (NR_ACCOUNT, json.dumps(sql)))
+    except Exception as e:
+        if hit:
+            return hit[1], None
+        return None, type(e).__name__ + ": " + str(e)[:120]
+    if d.get("errors"):
+        msg = str(d["errors"][0].get("message", ""))[:120]
+        return None, msg
+    res = d["data"]["actor"]["account"]["nrql"]["results"]
+    _nr_cache[cache_key] = (time.time(), res)
+    return res, None
+
+
+def _ms(v):
+    """NRQL reports Transaction durations in seconds."""
+    if v is None or isinstance(v, dict):
+        return None
+    return round(v * 1000, 2)
+
+
+def _p95(row):
+    v = row.get("p95")
+    if isinstance(v, dict):
+        v = v.get("95")
+    return _ms(v)
 
 
 def probe(name, url):
@@ -120,39 +199,41 @@ def newrelic_stats(up_names):
     what a half-finished deploy looks like, and the health probe alone cannot
     see it, because the outgoing instance keeps serving.
     """
-    key = NR_KEY
+    key = _nr_key()
     if not key:
-        try:
-            with open(NR_SECRET_FILE) as f:
-                key = f.read().strip()
-        except Exception:
-            key = ""
-    if not key:
-        return {"status": "unconfigured", "apps": []}
+        return {"status": "unconfigured", "apps": [], "endpoints": []}
 
     t0 = time.monotonic()
     try:
-        req = urllib.request.Request(
-            NR_ENDPOINT, data=json.dumps({"query": NR_QUERY}).encode(),
-            headers={"Content-Type": "application/json", "API-Key": key})
-        with urllib.request.urlopen(req, timeout=TIMEOUT,
-                                    context=ssl.create_default_context()) as r:
-            d = json.loads(r.read())
+        d = _post_nrd(NR_QUERY)
     except Exception as e:
-        return {"status": "error", "apps": [], "account": NR_ACCOUNT,
+        return {"status": "error", "apps": [], "endpoints": [],
+                "account": NR_ACCOUNT,
                 "ms": int((time.monotonic() - t0) * 1000),
                 "error": type(e).__name__ + ": " + str(e)[:120]}
 
     if d.get("errors"):
-        return {"status": "error", "apps": [], "account": NR_ACCOUNT,
+        return {"status": "error", "apps": [], "endpoints": [],
+                "account": NR_ACCOUNT,
                 "ms": int((time.monotonic() - t0) * 1000),
                 "error": str(d["errors"][0].get("message", ""))[:120]}
+
+    # NRQL fills in what the 15-minute apmSummary rollup cannot: tail latency
+    # and volume per endpoint. A failure here is non-fatal - the entity data
+    # above is still worth showing, so the columns just go empty.
+    app_rows, app_err = _nrql(NR_APP_NRQL.format(w=NR_WINDOW), "app")
+    ep_rows, ep_err = _nrql(NR_ENDPOINT_NRQL.format(w=NR_WINDOW), "endpoint")
+    by_app = {}
+    for r in app_rows or []:
+        n = r.get("appName") or r.get("facet")
+        by_app[n] = r
 
     apps = []
     for e in d["data"]["actor"]["entitySearch"]["results"]["entities"]:
         s = e.get("apmSummary") or {}
         name = e.get("name", "")
         reporting = bool(e.get("reporting"))
+        q = by_app.get(name) or {}
         apps.append({
             "name": name,
             "reporting": reporting,
@@ -161,8 +242,34 @@ def newrelic_stats(up_names):
             "error_rate": s.get("errorRate"),
             "response_ms": round((s.get("responseTimeAverage") or 0) * 1000, 2),
             "instances": s.get("instanceCount"),
+            "calls": q.get("calls"),
+            "p95_ms": _p95(q),
+            "max_ms": _ms(q.get("max_d")),
+            "err_pct": q.get("err_pct"),
         })
-    return {"status": "ok", "apps": apps, "account": NR_ACCOUNT,
+
+    # A single slow request is noise until it repeats. Rank by p95 so the
+    # endpoint table leads with what is consistently slow, not what was slow
+    # once - and drop rows too thin to have a meaningful tail.
+    eps, thin = [], 0
+    for r in ep_rows or []:
+        f = r.get("facet")
+        app, tx = (f if isinstance(f, list) else [f, r.get("name")])
+        p95 = _p95(r)
+        if not tx or p95 is None:
+            continue
+        if (r.get("calls") or 0) < NR_MIN_CALLS:
+            thin += 1
+            continue
+        eps.append({"app": app, "endpoint": tx, "calls": r.get("calls"),
+                    "avg_ms": _ms(r.get("avg_d")), "p95_ms": p95,
+                    "max_ms": _ms(r.get("max_d"))})
+    eps.sort(key=lambda x: (x["p95_ms"], x["calls"] or 0), reverse=True)
+
+    return {"status": "ok", "apps": apps, "endpoints": eps[:NR_TOP],
+            "thin": thin, "min_calls": NR_MIN_CALLS,
+            "account": NR_ACCOUNT, "window": NR_WINDOW,
+            "err": app_err or ep_err,
             "ms": int((time.monotonic() - t0) * 1000)}
 
 
@@ -202,12 +309,22 @@ th{color:#7d8794;font-weight:600}code{color:#79c0ff}
 """
 
 
+def cell(v, suffix=""):
+    if v is None:
+        return "&mdash;"
+    if isinstance(v, float):
+        v = round(v, 4)
+    return "%s%s" % (v, suffix)
+
+
 def nr_section(nr):
     if not nr or nr.get("status") != "ok":
         note = (nr or {}).get("error") or (nr or {}).get("status") or "unavailable"
         return "<h2>APM (New Relic)</h2><div class=sub>%s</div>" % note
+
     head = ("<tr><th>service</th><th>reporting</th><th>apdex</th>"
-            "<th>error rate</th><th>avg response</th><th>instances</th></tr>")
+            "<th>errors</th><th>avg</th><th>p95</th><th>max</th>"
+            "<th>calls/hr</th><th>instances</th></tr>")
     body = ""
     for a in nr["apps"]:
         if a["silent"]:
@@ -216,15 +333,53 @@ def nr_section(nr):
             reporting = '<span class="dot up"></span>yes'
         else:
             reporting = '<span class="dot down"></span>no'
+        err = a.get("err_pct")
+        if err:
+            errcell = '<span class="dot down"></span>%s%%' % err
+        elif err is None:
+            errcell = "&mdash;"
+        else:
+            errcell = "0%"
+        body += ("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td>"
+                 "<td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>"
+                 % (a["name"], reporting, cell(a["apdex"]), errcell,
+                    cell(a["response_ms"], " ms"), cell(a.get("p95_ms"), " ms"),
+                    cell(a.get("max_ms"), " ms"), cell(a.get("calls")),
+                    cell(a["instances"])))
 
-        def cell(v, suffix=""):
-            return "&mdash;" if v is None else ("%s%s" % (v, suffix))
+    out = ("<h2>APM (New Relic)</h2>"
+           "<div class=sub>account %s &middot; window %s</div>"
+           "<table>%s%s</table>"
+           % (nr.get("account", "?"), nr.get("window", "?"), head, body))
 
-        body += ("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>"
-                 % (a["name"], reporting, cell(a["apdex"]), cell(a["error_rate"]),
-                    cell(a["response_ms"], " ms"), cell(a["instances"])))
-    return ("<h2>APM (New Relic)</h2><div class=sub>account %s</div>"
-            "<table>%s%s</table>" % (nr.get("account", "?"), head, body))
+    eps = nr.get("endpoints") or []
+    if eps:
+        ehead = ("<tr><th>service</th><th>endpoint</th><th>calls</th>"
+                 "<th>avg</th><th>p95</th><th>max</th></tr>")
+        ebody = ""
+        for e in eps:
+            ebody += ("<tr><td>%s</td><td><code>%s</code></td><td>%s</td>"
+                      "<td>%s</td><td>%s</td><td>%s</td></tr>"
+                      % (e["app"], e["endpoint"], cell(e["calls"]),
+                         cell(e["avg_ms"], " ms"), cell(e["p95_ms"], " ms"),
+                         cell(e["max_ms"], " ms")))
+        out += ("<h2>Slowest endpoints</h2>"
+                "<div class=sub>ranked by p95 &middot; needs %d+ calls in the "
+                "window to count%s</div>"
+                "<table>%s%s</table>"
+                % (nr.get("min_calls", NR_MIN_CALLS),
+                   (", %d route%s hidden as too thin to measure"
+                    % (nr["thin"], "" if nr["thin"] == 1 else "s")) if nr.get("thin") else "",
+                   ehead, ebody))
+    elif nr.get("thin"):
+        out += ("<h2>Slowest endpoints</h2><div class=sub>no endpoint reached "
+                "%d calls in the window - traffic is too thin to measure a tail"
+                % nr.get("min_calls", NR_MIN_CALLS))
+
+    if nr.get("err"):
+        out += ('<div class=sub style="color:#d29922">NRQL partial: %s</div>'
+                % nr["err"])
+    return out
 
 
 def html(data):
