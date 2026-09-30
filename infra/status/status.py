@@ -239,10 +239,13 @@ def newrelic_stats(up_names):
             "reporting": reporting,
             "silent": name in up_names and not reporting,
             "apdex": s.get("apdexScore"),
-            "error_rate": s.get("errorRate"),
-            "response_ms": round((s.get("responseTimeAverage") or 0) * 1000, 2),
             "instances": s.get("instanceCount"),
             "calls": q.get("calls"),
+            # avg/p95/max come from the same NRQL query so all three describe the
+            # same window. responseTimeAverage from apmSummary reads like a huge
+            # discrepancy next to the endpoint table, but it is the agent's own
+            # ~15m rollup and will not agree with the 1h figures beside it.
+            "avg_ms": _ms(q.get("avg_d")),
             "p95_ms": _p95(q),
             "max_ms": _ms(q.get("max_d")),
             "err_pct": q.get("err_pct"),
@@ -322,9 +325,9 @@ def nr_section(nr):
         note = (nr or {}).get("error") or (nr or {}).get("status") or "unavailable"
         return "<h2>APM (New Relic)</h2><div class=sub>%s</div>" % note
 
-    head = ("<tr><th>service</th><th>reporting</th><th>apdex</th>"
+    head = ("<tr><th>service</th><th>reporting</th><th>apdex 15m</th>"
             "<th>errors</th><th>avg</th><th>p95</th><th>max</th>"
-            "<th>calls/hr</th><th>instances</th></tr>")
+            "<th>calls</th><th>instances</th></tr>")
     body = ""
     for a in nr["apps"]:
         if a["silent"]:
@@ -335,7 +338,7 @@ def nr_section(nr):
             reporting = '<span class="dot down"></span>no'
         err = a.get("err_pct")
         if err:
-            errcell = '<span class="dot down"></span>%s%%' % err
+            errcell = '<span class="dot down"></span>%s%%' % round(err, 3)
         elif err is None:
             errcell = "&mdash;"
         else:
@@ -343,12 +346,13 @@ def nr_section(nr):
         body += ("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td>"
                  "<td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>"
                  % (a["name"], reporting, cell(a["apdex"]), errcell,
-                    cell(a["response_ms"], " ms"), cell(a.get("p95_ms"), " ms"),
+                    cell(a.get("avg_ms"), " ms"), cell(a.get("p95_ms"), " ms"),
                     cell(a.get("max_ms"), " ms"), cell(a.get("calls")),
                     cell(a["instances"])))
 
     out = ("<h2>APM (New Relic)</h2>"
-           "<div class=sub>account %s &middot; window %s</div>"
+           "<div class=sub>account %s &middot; latency and errors over %s "
+           "&middot; apdex is the agent's own 15m rollup</div>"
            "<table>%s%s</table>"
            % (nr.get("account", "?"), nr.get("window", "?"), head, body))
 
