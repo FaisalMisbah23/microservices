@@ -1,4 +1,5 @@
 import nats, { Stan } from 'node-nats-streaming'
+import { randomUUID } from 'node:crypto'
 
 class NatsWrapper {
     private _client?: Stan;
@@ -12,7 +13,15 @@ class NatsWrapper {
     }
 
     connect(clusterId: string, clientId: string, url: string) {
-        this._client = nats.connect(clusterId, clientId, {
+        // NATS Streaming rejects a second connection reusing a live clientID. A
+        // fixed NATS_CLIENT_ID collides with the outgoing instance whenever a
+        // deploy overlaps it, so the connection dies with "clientID already
+        // registered" and the new build never passes its health check. Suffixing
+        // per process keeps rolling deploys from fighting each other; the queue
+        // group still does the load balancing.
+        const uniqueClientId = `${clientId}-${randomUUID().slice(0, 8)}`
+
+        this._client = nats.connect(clusterId, uniqueClientId, {
             url,
             ...(process.env.NATS_TOKEN ? { token: process.env.NATS_TOKEN } : {})
         })
