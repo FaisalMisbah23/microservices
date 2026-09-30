@@ -32,7 +32,7 @@ TIMEOUT = 12
 # ingest with - that one cannot read anything back. Left unconfigured, the page
 # just omits the APM section.
 NR_KEY = os.environ.get("NEW_RELIC_API_KEY", "")
-NR_ACCOUNT = os.environ.get("NEW_RELIC_ACCOUNT_ID", "546633351")
+NR_ACCOUNT = os.environ.get("NEW_RELIC_ACCOUNT_ID", "8561052")
 NR_ENDPOINT = os.environ.get("NEW_RELIC_ENDPOINT", "https://api.newrelic.com/graphql")
 NR_SECRET_FILE = "/opt/ticketing/newrelic.secret"
 

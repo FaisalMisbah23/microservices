@@ -14,7 +14,7 @@ Environment=STATUS_HISTORY=/var/lib/ticketing-status/history.jsonl
 # New Relic User key is read from /opt/ticketing/newrelic.secret, mode 0640
 # root:nats, rather than an Environment= line so the key stays out of
 # `systemctl show` and this file. Without it the page just omits the APM table.
-Environment=NEW_RELIC_ACCOUNT_ID=546633351
+Environment=NEW_RELIC_ACCOUNT_ID=8561052
 ExecStart=/usr/bin/python3 /opt/ticketing/status/status.py
 Restart=always
 RestartSec=5
