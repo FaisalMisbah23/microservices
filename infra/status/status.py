@@ -28,6 +28,30 @@ LOCAL = {
 }
 TIMEOUT = 12
 
+# New Relic APM via NerdGraph. A User key, not the license key the services
+# ingest with - that one cannot read anything back. Left unconfigured, the page
+# just omits the APM section.
+NR_KEY = os.environ.get("NEW_RELIC_API_KEY", "")
+NR_ACCOUNT = os.environ.get("NEW_RELIC_ACCOUNT_ID", "546633351")
+NR_ENDPOINT = os.environ.get("NEW_RELIC_ENDPOINT", "https://api.newrelic.com/graphql")
+NR_SECRET_FILE = "/opt/ticketing/newrelic.secret"
+
+NR_QUERY = """{
+  actor {
+    entitySearch(query: "type = 'APPLICATION' AND name LIKE 'ticketing-%'") {
+      results {
+        entities {
+          name
+          reporting
+          ... on ApmApplicationEntityOutline {
+            apmSummary { apdexScore errorRate responseTimeAverage instanceCount }
+          }
+        }
+      }
+    }
+  }
+}"""
+
 
 def probe(name, url):
     t0 = time.monotonic()
@@ -88,6 +112,60 @@ def redis_stats(pw):
                 "target": "127.0.0.1:6379", "error": str(e)[:120]}
 
 
+def newrelic_stats(up_names):
+    """APM summary per service.
+
+    The interesting signal is not apdex or error rate - it is a service whose
+    /health answers 200 while New Relic has stopped hearing from it. That is
+    what a half-finished deploy looks like, and the health probe alone cannot
+    see it, because the outgoing instance keeps serving.
+    """
+    key = NR_KEY
+    if not key:
+        try:
+            with open(NR_SECRET_FILE) as f:
+                key = f.read().strip()
+        except Exception:
+            key = ""
+    if not key:
+        return {"status": "unconfigured", "apps": []}
+
+    t0 = time.monotonic()
+    try:
+        req = urllib.request.Request(
+            NR_ENDPOINT, data=json.dumps({"query": NR_QUERY}).encode(),
+            headers={"Content-Type": "application/json", "API-Key": key})
+        with urllib.request.urlopen(req, timeout=TIMEOUT,
+                                    context=ssl.create_default_context()) as r:
+            d = json.loads(r.read())
+    except Exception as e:
+        return {"status": "error", "apps": [], "account": NR_ACCOUNT,
+                "ms": int((time.monotonic() - t0) * 1000),
+                "error": type(e).__name__ + ": " + str(e)[:120]}
+
+    if d.get("errors"):
+        return {"status": "error", "apps": [], "account": NR_ACCOUNT,
+                "ms": int((time.monotonic() - t0) * 1000),
+                "error": str(d["errors"][0].get("message", ""))[:120]}
+
+    apps = []
+    for e in d["data"]["actor"]["entitySearch"]["results"]["entities"]:
+        s = e.get("apmSummary") or {}
+        name = e.get("name", "")
+        reporting = bool(e.get("reporting"))
+        apps.append({
+            "name": name,
+            "reporting": reporting,
+            "silent": name in up_names and not reporting,
+            "apdex": s.get("apdexScore"),
+            "error_rate": s.get("errorRate"),
+            "response_ms": round((s.get("responseTimeAverage") or 0) * 1000, 2),
+            "instances": s.get("instanceCount"),
+        })
+    return {"status": "ok", "apps": apps, "account": NR_ACCOUNT,
+            "ms": int((time.monotonic() - t0) * 1000)}
+
+
 def run_pass(redis_pw):
     checks = [probe(n, u) for n, u in RENDER.items()]
     for n, u in LOCAL.items():
@@ -99,8 +177,11 @@ def run_pass(redis_pw):
     checks.append(nats_stats())
     checks.append(redis_stats(redis_pw))
     up = sum(1 for c in checks if c["status"] == "up")
+    up_names = {n for n in RENDER if
+                any(c["name"] == n and c["status"] == "up" for c in checks)}
     return {"checked_at": datetime.now(timezone.utc).isoformat(),
-            "up": up, "total": len(checks), "checks": checks}
+            "up": up, "total": len(checks), "checks": checks,
+            "newrelic": newrelic_stats(up_names)}
 
 
 CSS = """
@@ -119,6 +200,31 @@ table{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:.4rem}
 th,td{text-align:left;padding:.3rem .5rem;border-bottom:1px solid #232732}
 th{color:#7d8794;font-weight:600}code{color:#79c0ff}
 """
+
+
+def nr_section(nr):
+    if not nr or nr.get("status") != "ok":
+        note = (nr or {}).get("error") or (nr or {}).get("status") or "unavailable"
+        return "<h2>APM (New Relic)</h2><div class=sub>%s</div>" % note
+    head = ("<tr><th>service</th><th>reporting</th><th>apdex</th>"
+            "<th>error rate</th><th>avg response</th><th>instances</th></tr>")
+    body = ""
+    for a in nr["apps"]:
+        if a["silent"]:
+            reporting = '<span class="dot degraded"></span>no &mdash; health check passed but not reporting'
+        elif a["reporting"]:
+            reporting = '<span class="dot up"></span>yes'
+        else:
+            reporting = '<span class="dot down"></span>no'
+
+        def cell(v, suffix=""):
+            return "&mdash;" if v is None else ("%s%s" % (v, suffix))
+
+        body += ("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>"
+                 % (a["name"], reporting, cell(a["apdex"]), cell(a["error_rate"]),
+                    cell(a["response_ms"], " ms"), cell(a["instances"])))
+    return ("<h2>APM (New Relic)</h2><div class=sub>account %s</div>"
+            "<table>%s%s</table>" % (nr.get("account", "?"), head, body))
 
 
 def html(data):
@@ -142,8 +248,9 @@ def html(data):
             "<title>Ticketing status</title><style>%s</style>"
             "<h1>Ticketing platform status</h1><div class=sub>%s &middot; "
             "last checked %s &middot; refreshes every %ds</div>%s"
-            "<h2>Services</h2><div class=grid>%s</div>%s"
-            % (CSS, badge, data["checked_at"], INTERVAL, badge, rows, extra))
+            "<h2>Services</h2><div class=grid>%s</div>%s%s"
+            % (CSS, badge, data["checked_at"], INTERVAL, badge, rows, extra,
+               nr_section(data.get("newrelic"))))
 
 
 class Handler(BaseHTTPRequestHandler):
